@@ -9,3 +9,6 @@ import cProfile
 
 
 # py-spyrun -p $PID --duration 60 ??? --format raw
+
+def bpe_example():
+    
