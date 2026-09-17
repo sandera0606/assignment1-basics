@@ -1,6 +1,6 @@
 count = 0
-limit = 30
-marker = "<endoffile>"
+limit = 1000
+marker = "<|endoftext|>"
 
 with open("data/TinyStoriesV2-GPT4-train.txt", "r", encoding="utf-8") as infile, open("data/TinyStoriesSubset.txt", "w", encoding="utf-8") as outfile:
     for line in infile:

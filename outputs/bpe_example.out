@@ -1,0 +1,2 @@
+[((b's', b't'), b'st'), ((b'e', b'st'), b'est'), ((b'o', b'w'), b'ow'), ((b'l', b'ow'), b'low'), ((b'w', b'est'), b'west'), ((b'n', b'e'), b'ne')]
+{(b'w', b'i', b'd', b'est'): 3, (b'low',): 5, (b'low', b'e', b'r'): 2, (b'ne', b'west'): 6}

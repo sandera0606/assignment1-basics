@@ -1,8 +1,10 @@
 import os
 from typing import BinaryIO
 import regex as re
+from multiprocessing import Pool, TimeoutError
 
 PAT = re.compile(r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+""")
+# filepath = "data/TinyStoriesSubset.txt"
 
 
 def find_chunk_boundaries(
@@ -51,32 +53,49 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
-filepath = "data/TinyStoriesSubset.txt"
+def process_chunk(args):
+    filepath, start, end = args
+    local_res = {}
 
-# Usage
-with open(filepath, "rb") as f:
-    num_processes = 4
-    boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
-    res = {}
-
-
-    # The following is a serial implementation, but you can parallelize this
-    # by sending each start/end pair to a set of processes.
-    for start, end in zip(boundaries[:-1], boundaries[1:]):
+    with open(filepath, "rb") as f:
         f.seek(start)
         chunk = f.read(end - start).decode("utf-8", errors="ignore")
-        
-        # Run pre-tokenization on your chunk and store the counts for each pre-token
-        for match in PAT.finditer(chunk):
-            res[match] = res.get(match, 0) + 1
-    
-    print(res)
 
-# pretokenization practice
-# import regex as re
-# PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-# print(re.findall(PAT, "hello ni hao nihao nihowdy now nice how nice 你好。"))
+    special_pattern = re.compile(
+        "|".join(re.escape(token) for token in special_tokens)
+    )
 
-#When using it in your code, however, you should use re.finditer to avoid storing the pre-tokenized
-# words as you construct your mapping from pre-tokens to their counts
-# re.finditer(pattern, string, flags=0)
+    pieces = special_pattern.split(chunk)
+
+    for piece in pieces:
+        for match in PAT.finditer(piece):
+            token = match.group(0)
+            local_res[token] = local_res.get(token, 0) + 1
+
+    return local_res
+
+def pretokenize(filepath, special_tokens):
+    with open(filepath, "rb") as f:
+        num_processes = 4
+
+        boundaries = find_chunk_boundaries(
+            f,
+            num_processes,
+            b"<|endoftext|>"
+        )
+
+        tasks = [
+            (filepath, start, end, special_tokens)
+            for start, end in zip(boundaries[:-1], boundaries[1:])
+        ]
+
+        with Pool(processes=num_processes) as pool:
+            results = pool.map(process_chunk, tasks)
+
+        res = {}
+
+        for local_res in results:
+            for token, count in local_res.items():
+                res[token] = res.get(token, 0) + count
+
+        return res
